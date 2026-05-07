@@ -1,0 +1,41 @@
+{
+  "app_name": "customer-segmentation",
+  "version": "0.1.0",
+  "runtime": {
+    "spark": {
+      "version": "3.4.x"
+    }
+  },
+  "entry_point": {
+    "type": "python",
+    "path": "app/server.py"
+  },
+  "assets": {
+    "frontend": {
+      "path": "web/dist",
+      "type": "static"
+    }
+  },
+  "description": "Databricks app for customer segmentation using Spark clustering and a React UI.",
+  "parameters": [
+    {
+      "name": "input_table",
+      "type": "string",
+      "required": true,
+      "description": "Source Delta table path or table name containing purchase data."
+    },
+    {
+      "name": "output_table",
+      "type": "string",
+      "required": true,
+      "description": "Delta table to write segmentation results."
+    },
+    {
+      "name": "num_clusters",
+      "type": "integer",
+      "required": false,
+      "default": 5,
+      "description": "The number of clusters to compute."
+    }
+  ]
+}
