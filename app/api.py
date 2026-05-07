@@ -107,7 +107,6 @@ async def root():
             return FileResponse(web_dist_path)
 
     # If none found, return a helpful error with debugging info
-    import os
     cwd = os.getcwd()
     app_dir = os.path.dirname(__file__)
     debug_info = {
