@@ -4,7 +4,7 @@ python:
   requirements_file: app/requirements.txt
 build:
   commands:
-    - command: ["sh", "-c", "cd web && npm install && npm run build"]
+    - command: ["bash", "-c", "cd web && npm install && npm run build 2>&1 || echo 'Build failed or npm not available'"]
 command:
   - python
   - "-m"

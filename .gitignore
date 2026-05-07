@@ -13,4 +13,3 @@ build/
 *.log
 *.tmp
 .DS_Store
-web/dist/

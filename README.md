@@ -12,34 +12,34 @@ This project is a packaged Databricks application that performs customer segment
 
 The Python backend exposes a FastAPI service that reads a source Delta table, builds features from purchase patterns and geography, runs clustering with `pyspark.ml`, and writes segment assignments to an output Delta table.
 
-### Run locally
+### Build locally
 
-1. Install backend dependencies:
-   ```bash
-   python -m pip install -r app/requirements.txt
-   ```
-2. Start the API server:
-   ```bash
-   python app/server.py
-   ```
-3. Start the React development server:
-   ```bash
-   cd web
-   npm install
-   npm run dev
-   ```
+**Prerequisites:** Node.js 18+ and npm installed on your machine
 
-### Run on Databricks
-
-1. Build the frontend:
+1. Build the React frontend:
    ```bash
    cd web
    npm install
    npm run build
    cd ..
    ```
-2. Package the app assets for Databricks (example archive step is manual or via your deployment pipeline).
-3. Deploy the app to Databricks and start it using the declared `app/server.py` entrypoint.
+2. Install backend dependencies:
+   ```bash
+   python -m pip install -r app/requirements.txt
+   ```
+3. Start the API server:
+   ```bash
+   python app/server.py
+   ```
+4. The frontend will be served at `http://localhost:8000`
+
+### Run on Databricks
+
+1. Ensure you have built the frontend locally (see above)
+2. Commit the `web/dist` directory to git
+3. Deploy the app to Databricks—it will pull the pre-built frontend and start immediately
+
+The Databricks build process will attempt to rebuild the frontend if Node.js is available in the runtime environment.
 
 ## Frontend
 
