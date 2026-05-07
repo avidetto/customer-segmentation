@@ -96,6 +96,7 @@ async def root():
     """Serve the React app index.html at the root path."""
     # Try multiple possible paths for the built frontend
     possible_paths = [
+        os.path.join(os.path.dirname(__file__), "static", "index.html"),  # In app/static/
         os.path.join(os.path.dirname(__file__), "..", "web", "dist", "index.html"),  # Relative to app/
         os.path.join(os.getcwd(), "web", "dist", "index.html"),  # Relative to cwd
         "/app/web/dist/index.html",  # Absolute path in Databricks
@@ -114,6 +115,7 @@ async def root():
         "current_working_directory": cwd,
         "app_directory": app_dir,
         "tried_paths": possible_paths,
+        "files_in_app_static": list(os.listdir(os.path.join(app_dir, "static"))) if os.path.exists(os.path.join(app_dir, "static")) else "app/static does not exist",
         "files_in_web_dist": list(os.listdir(os.path.join(app_dir, "..", "web", "dist"))) if os.path.exists(os.path.join(app_dir, "..", "web", "dist")) else "web/dist does not exist"
     }
     return debug_info
@@ -127,20 +129,19 @@ async def serve_static(path_name: str):
         raise HTTPException(status_code=404, detail="Not Found")
 
     app_dir = os.path.dirname(__file__)
-    web_dist_path = os.path.join(app_dir, "..", "web", "dist")
-    file_path = os.path.join(web_dist_path, path_name)
-
-    # Security check: ensure the file is within web_dist_path
-    if not os.path.abspath(file_path).startswith(os.path.abspath(web_dist_path)):
+    static_path = os.path.join(app_dir, "static")
+    file_path = os.path.join(static_path, path_name)
+    
+    # Security check: ensure the file is within static_path
+    if not os.path.abspath(file_path).startswith(os.path.abspath(static_path)):
         raise HTTPException(status_code=404, detail="File not found")
-
+    
     # If file exists, serve it
     if os.path.isfile(file_path):
         return FileResponse(file_path)
-
+    
     # Otherwise, fallback to index.html for SPA routing
-    index_path = os.path.join(web_dist_path, "index.html")
-    if os.path.isfile(index_path):
+    index_path = os.path.join(static_path, "index.html")
         return FileResponse(index_path)
 
     raise HTTPException(status_code=404, detail="File not found")
