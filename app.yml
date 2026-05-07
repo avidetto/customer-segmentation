@@ -2,6 +2,8 @@ name: customer-segmentation
 description: Customer segmentation app using Delta clustering and React UI
 python:
   requirements_file: app/requirements.txt
+include:
+  - web/dist/**/*
 build:
   commands:
     - command: ["bash", "-c", "cd web && npm install && npm run build 2>&1 || echo 'Build failed or npm not available'"]
