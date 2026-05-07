@@ -1,10 +1,27 @@
+async function handleApiResponse(response, defaultMessage) {
+  if (response.ok) {
+    return response.json();
+  }
+
+  let errorMessage = defaultMessage;
+  try {
+    const payload = await response.json();
+    if (payload?.detail) {
+      errorMessage = payload.detail;
+    } else if (payload?.message) {
+      errorMessage = payload.message;
+    }
+  } catch {
+    // Ignore JSON parse errors and use default message.
+  }
+
+  throw new Error(errorMessage);
+}
+
 export async function fetchSegmentSummary(outputTable) {
   const url = `/api/segment-summary?output_table=${encodeURIComponent(outputTable)}`;
   const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("Unable to load segment summary.");
-  }
-  return response.json();
+  return handleApiResponse(response, "Unable to load segment summary.");
 }
 
 export async function runSegmentationJob({ inputTable, outputTable, numClusters }) {
@@ -14,10 +31,7 @@ export async function runSegmentationJob({ inputTable, outputTable, numClusters 
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ input_table: inputTable, output_table: outputTable, num_clusters: numClusters }),
   });
-  if (!response.ok) {
-    throw new Error("Unable to start segmentation job.");
-  }
-  return response.json();
+  return handleApiResponse(response, "Unable to start segmentation job.");
 }
 
 export async function populateSyntheticData({ tableName, numRows = 1000 }) {
@@ -27,8 +41,5 @@ export async function populateSyntheticData({ tableName, numRows = 1000 }) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ table_name: tableName, num_rows: numRows }),
   });
-  if (!response.ok) {
-    throw new Error("Unable to populate synthetic data.");
-  }
-  return response.json();
+  return handleApiResponse(response, "Unable to populate synthetic data.");
 }
