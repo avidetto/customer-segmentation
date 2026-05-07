@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fetchSegmentSummary, runSegmentationJob, populateSyntheticData } from "./api";
+import { runSegmentationJob, populateSyntheticData } from "./api";
 import SegmentSummary from "./components/SegmentSummary";
 
 export default function App() {
@@ -18,9 +18,8 @@ export default function App() {
     setError(null)
     setSyntheticMessage(null)
     try {
-      await runSegmentationJob({ inputTable, outputTable, numClusters })
-      const response = await fetchSegmentSummary(outputTable)
-      setSummary(response)
+      const response = await runSegmentationJob({ inputTable, outputTable, numClusters })
+      setSummary(response.summary)
     } catch (err) {
       setError(err.message || "Failed to run segmentation.")
     } finally {

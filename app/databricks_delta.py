@@ -145,6 +145,29 @@ def run_segmentation(
     source = quote_table_name(input_table)
     target = quote_table_name(output_table)
     row_limit = int(max_rows) if max_rows and max_rows > 0 else 1000000
+    source_columns = _table_columns(input_table)
+    _validate_purchase_columns(source_columns)
+
+    purchase_date_expr = (
+        "TO_DATE(purchase_date)"
+        if "purchase_date" in source_columns
+        else "CURRENT_DATE()"
+    )
+    product_category_expr = (
+        "COALESCE(product_category, 'unknown')"
+        if "product_category" in source_columns
+        else "'unknown'"
+    )
+    geography_exprs = {
+        "country": "MAX(COALESCE(country, 'unknown'))" if "country" in source_columns else "'unknown'",
+        "region": "MAX(COALESCE(region, 'unknown'))" if "region" in source_columns else "'unknown'",
+        "city": "MAX(COALESCE(city, 'unknown'))" if "city" in source_columns else "'unknown'",
+        "income_bucket": (
+            "MAX(COALESCE(income_bucket, 'unknown'))"
+            if "income_bucket" in source_columns
+            else "'unknown'"
+        ),
+    }
 
     statement = f"""
     CREATE OR REPLACE TABLE {target}
@@ -156,7 +179,7 @@ def run_segmentation(
       LIMIT {row_limit}
     ),
     latest_purchase AS (
-      SELECT MAX(TO_DATE(purchase_date)) AS latest_date
+      SELECT MAX({purchase_date_expr}) AS latest_date
       FROM source_rows
     ),
     purchase_features AS (
@@ -165,22 +188,22 @@ def run_segmentation(
         SUM(COALESCE(CAST(purchase_amount AS DOUBLE), 0.0)) AS total_spent,
         COUNT(*) AS purchase_count,
         AVG(COALESCE(CAST(purchase_amount AS DOUBLE), 0.0)) AS avg_amount,
-        MAX(DATEDIFF((SELECT latest_date FROM latest_purchase), TO_DATE(purchase_date))) AS recency_days,
-        COUNT(DISTINCT product_category) AS unique_categories,
-        MAX(COALESCE(country, 'unknown')) AS country,
-        MAX(COALESCE(region, 'unknown')) AS region,
-        MAX(COALESCE(city, 'unknown')) AS city,
-        MAX(COALESCE(income_bucket, 'unknown')) AS income_bucket
+        MAX(DATEDIFF((SELECT latest_date FROM latest_purchase), {purchase_date_expr})) AS recency_days,
+        COUNT(DISTINCT {product_category_expr}) AS unique_categories,
+        {geography_exprs["country"]} AS country,
+        {geography_exprs["region"]} AS region,
+        {geography_exprs["city"]} AS city,
+        {geography_exprs["income_bucket"]} AS income_bucket
       FROM source_rows
       GROUP BY customer_id
     ),
     category_totals AS (
       SELECT
         customer_id,
-        COALESCE(product_category, 'unknown') AS product_category,
+        {product_category_expr} AS product_category,
         COUNT(*) AS category_count
       FROM source_rows
-      GROUP BY customer_id, COALESCE(product_category, 'unknown')
+      GROUP BY customer_id, {product_category_expr}
     ),
     category_counts AS (
       SELECT
@@ -232,6 +255,29 @@ def run_segmentation(
     """
     _execute(statement)
     return summarize_cluster_assignments(output_table)
+
+
+def _table_columns(table_name: str) -> set[str]:
+    table = quote_table_name(table_name)
+    rows = _fetch_all(f"DESCRIBE TABLE {table}")
+    columns = set()
+    for row in rows:
+        column_name = row.get("col_name") or row.get("col_name".upper()) or next(iter(row.values()), None)
+        if not column_name or str(column_name).startswith("#"):
+            continue
+        columns.add(str(column_name).lower())
+    return columns
+
+
+def _validate_purchase_columns(columns: set[str]) -> None:
+    required_columns = {"customer_id", "purchase_amount"}
+    missing_columns = sorted(required_columns - columns)
+    if missing_columns:
+        raise ValueError(
+            "Input Delta table must include these columns: "
+            + ", ".join(sorted(required_columns))
+            + f". Missing: {', '.join(missing_columns)}."
+        )
 
 
 def summarize_cluster_assignments(output_table: str) -> List[Dict[str, Any]]:
