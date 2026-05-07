@@ -4,10 +4,6 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-
-from app.segmentation import run_segmentation, summarize_cluster_assignments
 
 app = FastAPI(
     title="Customer Segmentation API",
@@ -15,12 +11,13 @@ app = FastAPI(
     version="0.1.0",
 )
 
-spark: Optional[SparkSession] = None
+spark: Optional[object] = None
 
 
-def get_spark_session() -> SparkSession:
+def get_spark_session():
     global spark
     if spark is None:
+        from pyspark.sql import SparkSession
         spark = SparkSession.builder.appName("customer-segmentation-api").getOrCreate()
     return spark
 
@@ -48,6 +45,9 @@ class RunSegmentationResponse(BaseModel):
 
 @app.post("/api/run-segmentation", response_model=RunSegmentationResponse)
 async def run_segmentation_endpoint(request: SegmentationRequest):
+    from pyspark.sql import functions as F
+    from app.segmentation import run_segmentation, summarize_cluster_assignments
+    
     spark = get_spark_session()
     try:
         result_df = run_segmentation(
@@ -69,6 +69,8 @@ async def run_segmentation_endpoint(request: SegmentationRequest):
 
 @app.get("/api/segment-summary", response_model=List[SegmentSummaryItem])
 async def get_segment_summary(output_table: str):
+    from pyspark.sql import functions as F
+    
     spark = get_spark_session()
     try:
         summary_df = (

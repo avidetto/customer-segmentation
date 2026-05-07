@@ -1,4 +1,3 @@
-pyspark
 pandas
 fastapi
-uvicorn[standard][standard]
+uvicorn[standard]
