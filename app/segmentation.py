@@ -118,6 +118,41 @@ def run_segmentation(
     return output_df
 
 
+def create_synthetic_purchase_table(
+    spark: SparkSession,
+    table_name: str,
+    num_rows: int = 1000,
+    purchases_per_customer: int = 5,
+) -> DataFrame:
+    if num_rows < 1:
+        raise ValueError("num_rows must be a positive integer.")
+
+    categories = ["electronics", "apparel", "home", "sports", "beauty"]
+    countries = ["US", "CA", "GB", "DE", "FR"]
+    regions = ["North", "South", "East", "West", "Central"]
+    cities = ["Seattle", "Toronto", "London", "Berlin", "Paris"]
+    incomes = ["low", "medium", "high", "premium"]
+
+    base_df = (
+        spark.range(0, num_rows)
+        .withColumn("purchase_id", F.col("id") + 1)
+        .withColumn(
+            "customer_id",
+            F.concat(F.lit("CUST_"), (F.floor((F.col("id") / purchases_per_customer)) + 1).cast("int")),
+        )
+        .withColumn("purchase_date", F.date_sub(F.current_date(), F.floor(F.rand(42) * 365).cast("int")))
+        .withColumn("purchase_amount", F.round(F.rand(99) * 190 + 10, 2))
+        .withColumn("product_category", F.element_at(F.array(*[F.lit(v) for v in categories]), (F.col("id") % len(categories)) + 1))
+        .withColumn("country", F.element_at(F.array(*[F.lit(v) for v in countries]), (F.col("id") % len(countries)) + 1))
+        .withColumn("region", F.element_at(F.array(*[F.lit(v) for v in regions]), (F.col("id") % len(regions)) + 1))
+        .withColumn("city", F.element_at(F.array(*[F.lit(v) for v in cities]), (F.col("id") % len(cities)) + 1))
+        .withColumn("income_bucket", F.element_at(F.array(*[F.lit(v) for v in incomes]), (F.col("id") % len(incomes)) + 1))
+    )
+
+    base_df.write.format("delta").mode("overwrite").saveAsTable(table_name)
+    return base_df
+
+
 def summarize_cluster_assignments(df: DataFrame):
     summary_df = (
         df.groupBy("segment_id")

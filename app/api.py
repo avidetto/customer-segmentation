@@ -43,6 +43,11 @@ class RunSegmentationResponse(BaseModel):
     summary: List[SegmentSummaryItem]
 
 
+class PopulateSyntheticDataRequest(BaseModel):
+    table_name: str
+    num_rows: int = Field(default=1000, ge=100, le=200000, description="Number of synthetic purchase rows to generate")
+
+
 # Define API routes first before the catch-all static routes
 @app.post("/api/run-segmentation", response_model=RunSegmentationResponse)
 async def run_segmentation_endpoint(request: SegmentationRequest):
@@ -63,6 +68,27 @@ async def run_segmentation_endpoint(request: SegmentationRequest):
             "status": "success",
             "message": "Segmentation completed successfully.",
             "summary": summary,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/api/populate-synthetic-data")
+async def populate_synthetic_data_endpoint(request: PopulateSyntheticDataRequest):
+    from app.segmentation import create_synthetic_purchase_table
+
+    spark = get_spark_session()
+    try:
+        create_synthetic_purchase_table(
+            spark=spark,
+            table_name=request.table_name,
+            num_rows=request.num_rows,
+        )
+        return {
+            "status": "success",
+            "message": f"Synthetic data populated into table {request.table_name}.",
+            "table_name": request.table_name,
+            "rows": request.num_rows,
         }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
