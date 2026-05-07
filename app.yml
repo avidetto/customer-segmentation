@@ -5,6 +5,8 @@ python:
 env:
   - name: SQL_WAREHOUSE_ID
     valueFrom: sql-warehouse
+  - name: SQL_WAREHOUSE_NAME
+    value: Starter Warehouse
 include:
   - app/static/**/*
 build:

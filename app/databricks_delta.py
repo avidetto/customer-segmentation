@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
 from databricks import sql
+from databricks.sdk import WorkspaceClient
 from databricks.sdk.core import Config, oauth_service_principal
 
 
@@ -37,17 +38,33 @@ def _http_path() -> str:
     if configured_path:
         return configured_path
 
-    warehouse_id = (
+    warehouse_id = _warehouse_id()
+    if not warehouse_id:
+        raise RuntimeError(
+            "No SQL warehouse configured. Add Starter Warehouse as a SQL warehouse app resource "
+            "or grant the app service principal Can use permission on Starter Warehouse."
+        )
+    return f"/sql/1.0/warehouses/{warehouse_id}"
+
+
+def _warehouse_id() -> Optional[str]:
+    configured_id = (
         os.getenv("WAREHOUSE_ID")
         or os.getenv("DATABRICKS_WAREHOUSE_ID")
         or os.getenv("SQL_WAREHOUSE_ID")
     )
-    if not warehouse_id:
-        raise RuntimeError(
-            "No SQL warehouse configured. Edit the Databricks app resources, add Starter Warehouse "
-            "as a SQL warehouse resource with Can use permission, and redeploy the app."
-        )
-    return f"/sql/1.0/warehouses/{warehouse_id}"
+    if configured_id:
+        return configured_id
+
+    warehouse_name = os.getenv("SQL_WAREHOUSE_NAME", "Starter Warehouse")
+    try:
+        for warehouse in WorkspaceClient().warehouses.list():
+            if warehouse.name == warehouse_name:
+                return warehouse.id
+    except Exception:
+        return None
+
+    return None
 
 
 def _credentials_provider():
