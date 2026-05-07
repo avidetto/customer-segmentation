@@ -2,7 +2,7 @@ from typing import List, Optional
 import os
 
 from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 app = FastAPI(
@@ -43,6 +43,7 @@ class RunSegmentationResponse(BaseModel):
     summary: List[SegmentSummaryItem]
 
 
+# Define API routes first before the catch-all static routes
 @app.post("/api/run-segmentation", response_model=RunSegmentationResponse)
 async def run_segmentation_endpoint(request: SegmentationRequest):
     from pyspark.sql import functions as F
@@ -89,8 +90,34 @@ async def get_segment_summary(output_table: str):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-# Mount React frontend static files at the end after all API routes are defined
-web_dist_path = os.path.join(os.path.dirname(__file__), "..", "web", "dist")
-if os.path.exists(web_dist_path):
-    app.mount("/", StaticFiles(directory=web_dist_path, html=True), name="static")
+# Static file serving routes (defined after API routes)
+@app.get("/")
+async def root():
+    """Serve the React app index.html at the root path."""
+    web_dist_path = os.path.join(os.path.dirname(__file__), "..", "web", "dist", "index.html")
+    if os.path.exists(web_dist_path):
+        return FileResponse(web_dist_path)
+    return {"message": "React frontend not built. Run: cd web && npm install && npm run build"}
+
+
+@app.get("/{path_name:path}")
+async def serve_static(path_name: str):
+    """Serve static files and fallback to index.html for SPA routing."""
+    web_dist_path = os.path.join(os.path.dirname(__file__), "..", "web", "dist")
+    file_path = os.path.join(web_dist_path, path_name)
+    
+    # Security check: ensure the file is within web_dist_path
+    if not os.path.abspath(file_path).startswith(os.path.abspath(web_dist_path)):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    # If file exists, serve it
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+    
+    # Otherwise, fallback to index.html for SPA routing
+    index_path = os.path.join(web_dist_path, "index.html")
+    if os.path.isfile(index_path):
+        return FileResponse(index_path)
+    
+    raise HTTPException(status_code=404, detail="File not found")
 
