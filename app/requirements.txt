@@ -1,4 +1,5 @@
 pandas
 fastapi
 uvicorn[standard]
-pyspark
+databricks-sql-connector
+databricks-sdk

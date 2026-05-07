@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 import os
 
 from fastapi import FastAPI, HTTPException
@@ -10,17 +10,6 @@ app = FastAPI(
     description="Backend API to run customer segmentation on Delta tables.",
     version="0.1.0",
 )
-
-spark: Optional[object] = None
-
-
-def get_spark_session():
-    global spark
-    if spark is None:
-        from pyspark.sql import SparkSession
-        spark = SparkSession.builder.appName("customer-segmentation-api").getOrCreate()
-    return spark
-
 
 class SegmentationRequest(BaseModel):
     input_table: str
@@ -51,19 +40,15 @@ class PopulateSyntheticDataRequest(BaseModel):
 # Define API routes first before the catch-all static routes
 @app.post("/api/run-segmentation", response_model=RunSegmentationResponse)
 async def run_segmentation_endpoint(request: SegmentationRequest):
-    from pyspark.sql import functions as F
-    from app.segmentation import run_segmentation, summarize_cluster_assignments
+    from app.databricks_delta import run_segmentation
     
-    spark = get_spark_session()
     try:
-        result_df = run_segmentation(
-            spark=spark,
+        summary = run_segmentation(
             input_table=request.input_table,
             output_table=request.output_table,
             num_clusters=request.num_clusters,
             max_rows=request.max_rows,
         )
-        summary = summarize_cluster_assignments(result_df)
         return {
             "status": "success",
             "message": "Segmentation completed successfully.",
@@ -75,12 +60,10 @@ async def run_segmentation_endpoint(request: SegmentationRequest):
 
 @app.post("/api/populate-synthetic-data")
 async def populate_synthetic_data_endpoint(request: PopulateSyntheticDataRequest):
-    from app.segmentation import create_synthetic_purchase_table
+    from app.databricks_delta import create_synthetic_purchase_table
 
-    spark = get_spark_session()
     try:
         create_synthetic_purchase_table(
-            spark=spark,
             table_name=request.table_name,
             num_rows=request.num_rows,
         )
@@ -96,22 +79,10 @@ async def populate_synthetic_data_endpoint(request: PopulateSyntheticDataRequest
 
 @app.get("/api/segment-summary", response_model=List[SegmentSummaryItem])
 async def get_segment_summary(output_table: str):
-    from pyspark.sql import functions as F
+    from app.databricks_delta import summarize_cluster_assignments
     
-    spark = get_spark_session()
     try:
-        summary_df = (
-            spark.table(output_table)
-            .groupBy("segment_id")
-            .agg(
-                F.countDistinct("customer_id").alias("customer_count"),
-                F.avg("total_spent").alias("avg_spent"),
-                F.avg("avg_amount").alias("avg_order_amount"),
-                F.avg("recency_days").alias("avg_recency_days"),
-            )
-            .orderBy("segment_id")
-        )
-        return [row.asDict() for row in summary_df.collect()]
+        return summarize_cluster_assignments(output_table)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
