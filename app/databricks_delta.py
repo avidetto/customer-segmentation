@@ -37,11 +37,15 @@ def _http_path() -> str:
     if configured_path:
         return configured_path
 
-    warehouse_id = os.getenv("WAREHOUSE_ID") or os.getenv("DATABRICKS_WAREHOUSE_ID")
+    warehouse_id = (
+        os.getenv("WAREHOUSE_ID")
+        or os.getenv("DATABRICKS_WAREHOUSE_ID")
+        or os.getenv("SQL_WAREHOUSE_ID")
+    )
     if not warehouse_id:
         raise RuntimeError(
-            "No SQL warehouse configured. Add a SQL warehouse resource to the Databricks app "
-            "and expose it as WAREHOUSE_ID in app.yml."
+            "No SQL warehouse configured. Edit the Databricks app resources, add Starter Warehouse "
+            "as a SQL warehouse resource with Can use permission, and redeploy the app."
         )
     return f"/sql/1.0/warehouses/{warehouse_id}"
 
