@@ -1,0 +1,14 @@
+name: customer-segmentation
+description: Customer segmentation app using Delta clustering and React UI
+build:
+  commands:
+    - command: ["sh", "-c", "cd web && npm install && npm run build"]
+command:
+  - python
+  - "-m"
+  - "uvicorn"
+  - "app.api:app"
+  - "--host"
+  - "0.0.0.0"
+  - "--port"
+  - "$DATABRICKS_APP_PORT"

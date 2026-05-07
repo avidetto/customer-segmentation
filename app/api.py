@@ -1,6 +1,8 @@
 from typing import List, Optional
+import os
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
@@ -83,3 +85,10 @@ async def get_segment_summary(output_table: str):
         return [row.asDict() for row in summary_df.collect()]
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+# Mount React frontend static files at the end after all API routes are defined
+web_dist_path = os.path.join(os.path.dirname(__file__), "..", "web", "dist")
+if os.path.exists(web_dist_path):
+    app.mount("/", StaticFiles(directory=web_dist_path, html=True), name="static")
+
