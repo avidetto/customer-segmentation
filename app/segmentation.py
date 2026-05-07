@@ -5,6 +5,7 @@ from pyspark.ml.clustering import KMeans
 from pyspark.ml.feature import OneHotEncoder, StringIndexer, VectorAssembler
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
+from pyspark.sql.types import DateType, DoubleType, IntegerType, StringType, StructField, StructType
 from pyspark.sql.window import Window
 
 
@@ -133,20 +134,48 @@ def create_synthetic_purchase_table(
     cities = ["Seattle", "Toronto", "London", "Berlin", "Paris"]
     incomes = ["low", "medium", "high", "premium"]
 
+    raw_df = spark.range(0, num_rows)
+
     base_df = (
-        spark.range(0, num_rows)
-        .withColumn("purchase_id", F.col("id") + 1)
+        raw_df
+        .withColumn("purchase_id", (F.col("id") + 1).cast(IntegerType()))
         .withColumn(
             "customer_id",
-            F.concat(F.lit("CUST_"), (F.floor((F.col("id") / purchases_per_customer)) + 1).cast("int")),
+            F.concat(F.lit("CUST_"), (F.floor((F.col("id") / purchases_per_customer)) + 1).cast(IntegerType()).cast(StringType())),
         )
-        .withColumn("purchase_date", F.date_sub(F.current_date(), F.floor(F.rand(42) * 365).cast("int")))
-        .withColumn("purchase_amount", F.round(F.rand(99) * 190 + 10, 2))
-        .withColumn("product_category", F.element_at(F.array(*[F.lit(v) for v in categories]), (F.col("id") % len(categories)) + 1))
-        .withColumn("country", F.element_at(F.array(*[F.lit(v) for v in countries]), (F.col("id") % len(countries)) + 1))
-        .withColumn("region", F.element_at(F.array(*[F.lit(v) for v in regions]), (F.col("id") % len(regions)) + 1))
-        .withColumn("city", F.element_at(F.array(*[F.lit(v) for v in cities]), (F.col("id") % len(cities)) + 1))
-        .withColumn("income_bucket", F.element_at(F.array(*[F.lit(v) for v in incomes]), (F.col("id") % len(incomes)) + 1))
+        .withColumn("purchase_date", F.date_sub(F.current_date(), F.floor(F.rand(42) * 365).cast(IntegerType())).cast(DateType()))
+        .withColumn("purchase_amount", F.round(F.rand(99) * 190 + 10, 2).cast(DoubleType()))
+        .withColumn(
+            "product_category",
+            F.element_at(F.array(*[F.lit(v) for v in categories]), (F.col("id") % len(categories)) + 1).cast(StringType()),
+        )
+        .withColumn(
+            "country",
+            F.element_at(F.array(*[F.lit(v) for v in countries]), (F.col("id") % len(countries)) + 1).cast(StringType()),
+        )
+        .withColumn(
+            "region",
+            F.element_at(F.array(*[F.lit(v) for v in regions]), (F.col("id") % len(regions)) + 1).cast(StringType()),
+        )
+        .withColumn(
+            "city",
+            F.element_at(F.array(*[F.lit(v) for v in cities]), (F.col("id") % len(cities)) + 1).cast(StringType()),
+        )
+        .withColumn(
+            "income_bucket",
+            F.element_at(F.array(*[F.lit(v) for v in incomes]), (F.col("id") % len(incomes)) + 1).cast(StringType()),
+        )
+        .select(
+            "purchase_id",
+            "customer_id",
+            "purchase_date",
+            "purchase_amount",
+            "product_category",
+            "country",
+            "region",
+            "city",
+            "income_bucket",
+        )
     )
 
     base_df.write.format("delta").mode("overwrite").saveAsTable(table_name)
