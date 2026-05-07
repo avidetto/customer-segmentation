@@ -49,29 +49,36 @@ export default function App() {
       </header>
 
       <section className="panel">
-        <h2>Configuration</h2>
-        <label>
-          Source Delta Table
-          <input value={inputTable} onChange={(event) => setInputTable(event.target.value)} />
-        </label>
-        <label>
-          Output Delta Table
-          <input value={outputTable} onChange={(event) => setOutputTable(event.target.value)} />
-        </label>
-        <label>
-          Number of Clusters
-          <input type="number" min="2" max="20" value={numClusters} onChange={(event) => setNumClusters(Number(event.target.value))} />
-        </label>
-        <label>
-          Synthetic Records
-          <input type="number" min="100" max="200000" step="100" value={syntheticRows} onChange={(event) => setSyntheticRows(Number(event.target.value))} />
-        </label>
-        <button onClick={handlePopulateSyntheticData} disabled={syntheticLoading}>
-          {syntheticLoading ? "Generating data..." : "Populate Synthetic Data"}
-        </button>
-        <button onClick={handleRunSegmentation} disabled={loading}>
-          {loading ? "Running segmentation..." : "Run Segmentation"}
-        </button>
+        <div className="panel-heading">
+          <h2>Configuration</h2>
+          <span>{summary?.length ? `${summary.length} segments generated` : "Ready"}</span>
+        </div>
+        <div className="form-grid">
+          <label className="wide-field">
+            Source Delta Table
+            <input value={inputTable} onChange={(event) => setInputTable(event.target.value)} />
+          </label>
+          <label className="wide-field">
+            Output Delta Table
+            <input value={outputTable} onChange={(event) => setOutputTable(event.target.value)} />
+          </label>
+          <label>
+            Number of Clusters
+            <input type="number" min="2" max="20" value={numClusters} onChange={(event) => setNumClusters(Number(event.target.value))} />
+          </label>
+          <label>
+            Synthetic Records
+            <input type="number" min="100" max="200000" step="100" value={syntheticRows} onChange={(event) => setSyntheticRows(Number(event.target.value))} />
+          </label>
+        </div>
+        <div className="button-row">
+          <button className="secondary-button" onClick={handlePopulateSyntheticData} disabled={syntheticLoading}>
+            {syntheticLoading ? "Generating data..." : "Populate Synthetic Data"}
+          </button>
+          <button onClick={handleRunSegmentation} disabled={loading}>
+            {loading ? "Running segmentation..." : "Run Segmentation"}
+          </button>
+        </div>
         {error && <div className="error">{error}</div>}
         {syntheticMessage && <div className="success">{syntheticMessage}</div>}
       </section>
