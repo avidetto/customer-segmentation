@@ -142,7 +142,7 @@ async def serve_static(path_name: str):
     
     # Otherwise, fallback to index.html for SPA routing
     index_path = os.path.join(static_path, "index.html")
-        return FileResponse(index_path)
+    return FileResponse(index_path)
 
     raise HTTPException(status_code=404, detail="File not found")
 
