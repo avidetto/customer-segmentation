@@ -23,6 +23,8 @@ The Python backend exposes a FastAPI service that reads a source Delta table, bu
    npm run build
    cd ..
    ```
+   ✅ **Build completed** - The `web/dist` directory contains the production build.
+
 2. Install backend dependencies:
    ```bash
    python -m pip install -r app/requirements.txt
